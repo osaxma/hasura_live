@@ -8,7 +8,7 @@
             "name": "hasura_live",
             "request": "launch",
             "type": "dart",
-            "program": "example/hasura_live_example.dart"
+            "program": "example/example.dart"
         }
     ]
 }

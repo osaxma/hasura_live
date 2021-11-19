@@ -10,11 +10,11 @@ import 'message.dart';
 // The default web socket protocl WebSocketChannel.connect
 const _websocketProtocol = 'graphql-ws';
 
-// TODO: general
+// TODO: general (WIP)
 // - Reconnect:
 //   Implement the reconnect process properly. This will require closing the subscription of jwtStream
-//   and re-subsribing. That means if the user choose `reconnect: true` once provided, they jwtStream
-//   needs to be a broadcast stream since we will need to subscribe to it multiple times.
+//   and re-subsribing. That means if the user choose `reconnect: true` once provided, the jwtStream
+//   needs to be a broadcast stream since multiple subscriptions are needed.
 //
 // - Lazy Option:
 //   only initialize the websocket connection once a request. And if there isn't any live subscription,
@@ -23,11 +23,11 @@ const _websocketProtocol = 'graphql-ws';
 // - Timeout:
 //   Implement the timeout properly or remove it if it's unnecessary. Timeout may not be needed because
 //   within 5 seconds if no `keep alive` message is received, the connection should be deemed failed.
+//
 // -  Keep alive:
 //   if no `keep alive` messages is received every 5 seconds, that should indicate a connection error.
-//   This is an issue with an invalid endpoint since no error is thrown by WebsocketChannel.connect.
+//   This could be an issue with an invalid endpoint since no error is thrown by WebsocketChannel.connect.
 //   see: https://github.com/dart-lang/web_socket_channel/issues/61
-//
 //
 // - Handling error:
 //   Handle error properly and redirect errors to proper subscriptions.
@@ -35,15 +35,15 @@ const _websocketProtocol = 'graphql-ws';
 // - Clean up:
 //   There's some reptitive code and invalid comments left out from the experimentation phase. Also, this
 //   includes spell-check and grammar check for comments :/
+//
+// - Subscription Error:
+//   Investigate what happens when a subscription receives an error. Does the user have to cancel their
+//   subscription after they receive an error? Or should the package cleanup after (i.e. make sure that the
+//   subscription is removed from the active subscriptions map in HasuraLive map).
 
 class HasuraLive {
   /// The websocket endpoint
   final String wsURL;
-
-  /// The number of retry attempts for connecting to the websocket endpoint
-  ///
-  /// this number will be used for both the initial connection and when reconnecting (e.g., refershing the jwt token)
-  final int retryAttempts;
 
   /// The connection headers
   ///
@@ -51,17 +51,12 @@ class HasuraLive {
   /// if `jwtTokenProvider` is given, the headers will be used when reconnecting with the new token.
   final Map<String, dynamic>? headers;
 
-  /// Requests timeout in seconds
-  ///
-  /// default value is 5 seconds
-  final Duration requestsTimeout;
-
   /// A stream of JWT tokens
   ///
   /// The stream must send a JWT upon subscription, and send new ones after the previous is expired.
   ///
   /// The stream is only useful when the token expires during the lifetime of the connection.
-  /// Otherwise, supply the JWT token in the [headers]. 
+  /// Otherwise, supply the JWT token in the [headers].
   final Stream<String>? jwtStream;
   late final StreamSubscription<Object?>? _jwtTokenProviderSubscription;
 
@@ -75,8 +70,6 @@ class HasuraLive {
     required this.wsURL,
     this.jwtStream,
     this.headers,
-    this.retryAttempts = 3,
-    this.requestsTimeout = const Duration(seconds: 5),
   }) {
     if (jwtStream != null) {
       _jwtTokenProviderSubscription = jwtStream!.distinct().listen((jwtToken) {
@@ -138,12 +131,12 @@ class HasuraLive {
   }
 
   /// Execute mutations or queries.
-  Future<Message> execute(GQLRequest request) async {
+  Future<Message> execute(GQLRequest request, [Duration timeout = const Duration(seconds: 10)]) async {
     await _sendMessage(request.toStartMessage());
 
     final res = await _hasuraConnection.rootStream.firstWhere((element) {
       return element.id == request.key;
-    }).timeout(requestsTimeout);
+    }).timeout(timeout);
 
     if (res.type == MessageTypes.error) {
       return Future.error(res);
@@ -153,6 +146,13 @@ class HasuraLive {
   }
 
   /// Subscribe to live queries.
+  ///
+  /// Make sure to cancel the subscription after done using it even after an error.
+  // TODO: investigate the possible cases here and how they should be handled.
+  //       The main issue would be if a subscription is no longer in use but
+  //       it was not canceled. In such case the subscription won't be removed
+  //       from _activeSubscriptions since _stopSubscription is called upon
+  //       cancelling the subscription only.
   Stream<Message> subscription(GQLRequest request) {
     return _StreamWrapper(
       request: request,
@@ -242,13 +242,9 @@ class _HasuraConnection {
     return Future<WebSocketChannel>.value(channel);
   }
 
-  Future<WebSocketChannel> _connectWithRetry([int retryAttempts = 0]) async {
-    return await retry<WebSocketChannel>(retryAttempts, _connect);
-  }
-
   Future<void> start({Message? initMessage}) async {
     try {
-      _webSocketClient = await _connectWithRetry();
+      _webSocketClient = await _connect();
       _subscribe();
     } catch (e, s) {
       __connectionAcknowledgedCompleter.completeError(e, s);
@@ -271,7 +267,7 @@ class _HasuraConnection {
     // }
     await _webSocketClient?.sink.close();
     logger.info('websocket connection closed');
-    _webSocketClient = await _connectWithRetry();
+    _webSocketClient = await _connect();
     logger.info('websocket connection restarted');
     _subscribe();
     if (initMessage != null) {
@@ -359,8 +355,10 @@ class _StreamWrapper {
     // TODO: handle the error properly. The issue arise when `_whenCancel` is called and the rootStream
     //       or the websocket connection is already closed.
     try {
-      await subscription.cancel();
-      await _whenCancel(request);
+      await Future.wait([
+        subscription.cancel(),
+        _whenCancel(request),
+      ]); // .onError((error, stackTrace) => null);
     } catch (e) {
       print('error when cancelling stream wrapper: $e');
     }

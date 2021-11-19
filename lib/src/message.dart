@@ -40,7 +40,6 @@ class Message {
   }
 
   factory Message.fromMap(Map<String, dynamic> map) {
-    print('map = $map \n\n');
 
     final messageType = MessageTypes.fromMap(map['type']);
 
