@@ -8,19 +8,19 @@ import 'package:collection/collection.dart';
 class Message {
   /// A key to identify each response from the server.
   ///
-  /// The id must be unique for each subscription, otherwise it can be null.
+  /// The id must be unique for each subscription.
   final String? id;
 
   /// The Message Type as defined in [MessageTypes]
   ///
-  /// the type can be used to identify the server response (e.g., error or data), and also used to send requests to
-  /// the server.
+  /// the type can be used to identify the server response (e.g., error or data),
+  /// and also used to send requests to the server.
   final MessageTypes? type;
 
   /// Client or Server payload
   ///
-  /// The payload can be a string, map, or null. In case of [MessageTypes.data], 
-  /// it'll contain a `Map<String, dynamic>` of the data where the key is 'data'. 
+  /// The payload can be a string, map, or null. In case of [MessageTypes.data],
+  /// it'll contain a `Map<String, dynamic>` of the data where the key is 'data'.
   /// In the case of [MessageTypes.error], it'll contain an error either as a string
   /// or as a Map<String, dynamic> where the key is 'errors' or 'extentions' (hasura specific).
   final Object? payload;
@@ -40,9 +40,12 @@ class Message {
   }
 
   factory Message.fromMap(Map<String, dynamic> map) {
+    print('map = $map \n\n');
+
     final messageType = MessageTypes.fromMap(map['type']);
 
-    // keep alive message has no id nor payload, and it's being called every 5 seconds so we just return a const object.
+    // keep alive message has no id nor payload, and it's being called every 5 seconds
+    // so we just return a const object.
     if (messageType == MessageTypes.connectionKeepAlive) {
       return const Message(type: MessageTypes.connectionKeepAlive);
     }
@@ -62,6 +65,8 @@ class Message {
 
   String toJson() => json.encode(toMap());
 
+  bool get hasError => type == MessageTypes.error || type == MessageTypes.connectionError;
+
   factory Message.fromJson(String source) => Message.fromMap(json.decode(source));
 
   @override
@@ -70,7 +75,7 @@ class Message {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    // mapEquals will work on any type since it has a fallback for DefaultEquality (see constructor). 
+    // mapEquals will work on any type since it has a fallback for DefaultEquality (see constructor).
     final mapEquals = const DeepCollectionEquality().equals;
 
     return other is Message && other.id == id && other.type == type && mapEquals(payload, other.payload);
@@ -79,7 +84,6 @@ class Message {
   @override
   int get hashCode => id.hashCode ^ type.hashCode ^ payload.hashCode;
 }
-
 
 /// An enum like class represneting the message types and their code value as a string
 ///

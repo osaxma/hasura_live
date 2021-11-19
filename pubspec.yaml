@@ -1,7 +1,7 @@
-name: hasura_simple
+name: hasura_live
 description: Query, Mutation and Subscription with Hasura over websocket. 
 version: 0.1.0
-homepage: https://github.com/osaxma/hasura_simple
+homepage: https://github.com/osaxma/hasura_live
 
 environment:
   sdk: '>=2.12.0 <3.0.0'

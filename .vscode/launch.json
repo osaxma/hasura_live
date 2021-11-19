@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "hasura_simple",
+            "name": "hasura_live",
             "request": "launch",
             "type": "dart",
-            "program": "example/hasura_simple_example.dart"
+            "program": "example/hasura_live_example.dart"
         }
     ]
 }

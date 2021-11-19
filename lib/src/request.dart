@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
-import 'package:hasura_simple/src/message.dart';
+import 'package:hasura_live/src/message.dart';
 
 /// Defines a GraphQL request.
 ///

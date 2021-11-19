@@ -12,7 +12,7 @@ import 'package:logging/logging.dart';
 ///   print('${record.level.name}: $timeString: ${record.message}');
 /// });
 /// ```
-final logger = Logger('hasura_simple.dart');
+final logger = Logger('hasura_live.dart');
 
 // a handy method for retrying a future
 Future<T> retry<T>(

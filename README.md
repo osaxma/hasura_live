@@ -1,4 +1,4 @@
-# Hasura Simple Package
+# Hasura Live Package
 A library for connecting to Hasura through websocket only.
 
 Note: In addition to subscriptions (aka live queries), mutations and queries can also be performed through the websocket connection. 
@@ -7,7 +7,7 @@ Note: In addition to subscriptions (aka live queries), mutations and queries can
 This package is meant to solve the problem of replacing an expired JWT (Json Web Token) with a new one without closing any live subscriptions. Firebase Authentication service is the main use case for creating this package but the concept should work with other other services as long as a stream of JWT can be provided. 
 
 ## Issue: 
-Using Firebase Authenticationas as an example of a JWT provider, the issue goes like this:
+Using Firebase Authenticationas as an example of a JWT provider, the issue can be summarized as follow:
 - The JWT from Firebase Authentication expires every hour. 
 - The JWT is provided to Hasura upon establishing the websocket connection.
 - Once the connection is established, there is no way to update the JWT after it expires<sup>1</sup>.
@@ -28,9 +28,9 @@ Since the package is not yet published on pub.dev, you can use it by adding the 
 
 ```yaml
 dependencies:
-  hasura_simple:
+  hasura_live:
     git: 
-      url: git://github.com/osaxma/hasura_simple.git
+      url: git://github.com/osaxma/hasura_live.git
       ref: main
 ```
 
@@ -38,7 +38,7 @@ To facilitate the communication, the package uses [`GQLRequest`](lib/src/request
 
 * To create a client
 ```dart
-final client = HasuraSimpleWS(
+final client = HasuraLive(
           wsURL: url, // the websocket endpoint
           jwtStream: jwtStream, // a stream of JWT token
         );

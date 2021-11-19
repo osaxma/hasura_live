@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-import 'package:hasura_simple/src/util.dart';
-import 'package:hasura_simple/src/request.dart';
+import 'package:hasura_live/src/util.dart';
+import 'package:hasura_live/src/request.dart';
 
 import 'message.dart';
 
@@ -16,8 +16,17 @@ const _websocketProtocol = 'graphql-ws';
 //   and re-subsribing. That means if the user choose `reconnect: true` once provided, they jwtStream
 //   needs to be a broadcast stream since we will need to subscribe to it multiple times.
 //
+// - Lazy Option:
+//   only initialize the websocket connection once a request. And if there isn't any live subscription,
+//   close the connection. This also requres the jwtStream to be a broadcast stream.
+//
 // - Timeout:
-//   Implement the timeout properly.
+//   Implement the timeout properly or remove it if it's unnecessary. Timeout may not be needed because
+//   within 5 seconds if no `keep alive` message is received, the connection should be deemed failed.
+// -  Keep alive:
+//   if no `keep alive` messages is received every 5 seconds, that should indicate a connection error.
+//   This is an issue with an invalid endpoint since no error is thrown by WebsocketChannel.connect.
+//   see: https://github.com/dart-lang/web_socket_channel/issues/61
 //
 //
 // - Handling error:
@@ -27,7 +36,7 @@ const _websocketProtocol = 'graphql-ws';
 //   There's some reptitive code and invalid comments left out from the experimentation phase. Also, this
 //   includes spell-check and grammar check for comments :/
 
-class HasuraSimpleWS {
+class HasuraLive {
   /// The websocket endpoint
   final String wsURL;
 
@@ -47,13 +56,12 @@ class HasuraSimpleWS {
   /// default value is 5 seconds
   final Duration requestsTimeout;
 
-  /// JWT changes notifier
+  /// A stream of JWT tokens
   ///
-  /// A stream that emits events whenever the JWT needs to be updated. The events emitted by the stream can be of any
-  /// type since they'll not be read, but they will be use as an indicator to refresh the websocket. Whenever an event
-  /// is received by the stream, `jwtTokenProvider` is called to retrieve the new jwt token.
+  /// The stream must send a JWT upon subscription, and send new ones after the previous is expired.
   ///
   /// The stream is only useful when the token expires during the lifetime of the connection.
+  /// Otherwise, supply the JWT token in the [headers]. 
   final Stream<String>? jwtStream;
   late final StreamSubscription<Object?>? _jwtTokenProviderSubscription;
 
@@ -63,7 +71,7 @@ class HasuraSimpleWS {
   // the map is mainly used to recreate subscription when restablishing the websocket connection.
   final _activeSubscriptions = <String, GQLRequest>{};
 
-  HasuraSimpleWS({
+  HasuraLive({
     required this.wsURL,
     this.jwtStream,
     this.headers,
@@ -129,7 +137,7 @@ class HasuraSimpleWS {
     await _hasuraConnection.sendMessage(message);
   }
 
-  /// Execute mutations or query requests.
+  /// Execute mutations or queries.
   Future<Message> execute(GQLRequest request) async {
     await _sendMessage(request.toStartMessage());
 
@@ -205,11 +213,20 @@ class _HasuraConnection {
   _HasuraConnection(this.url);
 
   Future<void> sendMessage(Message message) async {
+    // stop messages can be sent right after the websocket connection is closed.
+    // Since it's not necessary to send a stop message anyway in such case,
+    // the following will avoid throwing an error.
+    if (_hasuraStreamController.isClosed && message.type == MessageTypes.stop) {
+      // TODO: maybe check the _webSocketClient.closeCode and throw an error if
+      //       the connection was not closed by the user.
+      return;
+    }
     if (!_connectionAcknowledged && message.type != MessageTypes.connectionInit) {
       // TODO: provide timeout here?
       logger.info('waiting for connection acknowledgement');
       await __connectionAcknowledgedCompleter.future.timeout(const Duration(seconds: 10));
     }
+
     _webSocketClient?.sink.add(message.toJson());
   }
 
