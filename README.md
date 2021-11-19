@@ -24,7 +24,17 @@ This package aims to solve the aforementioned issue.
 
 
 # Usage
-To facilitate the communication, the package uses [`GQLRequest`](lib/src/request.dart) to define requests and [`Message`](lib/src/message.dart) to carry data and errors. 
+Since the package is not yet published on pub.dev, you can use it by adding the following to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  hasura_simple:
+    git: 
+      url: git://github.com/osaxma/hasura_simple.git
+      ref: main
+```
+
+To facilitate the communication, the package uses [`GQLRequest`](lib/src/request.dart) to define requests to the server, and [`Message`](lib/src/message.dart) to carry data and errors between the client and the server. 
 
 * To create a client
 ```dart
