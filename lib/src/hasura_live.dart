@@ -185,7 +185,11 @@ class HasuraLive {
   }
 
   Future<void> close() async {
-    await _jwtTokenProviderSubscription?.cancel();
+    // if there is no stream, there won't be a subscription. 
+    // to avoid LateInitializationError
+    if (jwtStream != null) {
+      await _jwtTokenProviderSubscription!.cancel();
+    }
     await _hasuraConnection.close();
   }
 }

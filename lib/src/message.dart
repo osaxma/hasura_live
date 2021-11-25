@@ -40,7 +40,6 @@ class Message {
   }
 
   factory Message.fromMap(Map<String, dynamic> map) {
-
     final messageType = MessageTypes.fromMap(map['type']);
 
     // keep alive message has no id nor payload, and it's being called every 5 seconds
@@ -64,7 +63,26 @@ class Message {
 
   String toJson() => json.encode(toMap());
 
-  bool get hasError => type == MessageTypes.error || type == MessageTypes.connectionError;
+ 
+  bool get hasError => type == MessageTypes.error || type == MessageTypes.connectionError || _doesPayloadHaveErros();
+
+  // the following is mainly to handle this type of message:
+  //      Message(
+  //       id: eac474f25c1a29861995906bf2b5dd6b,
+  //       type: data, 
+  //       payload: {
+  //          data: null, 
+  //          errors: [{extensions: {path: $.selectionSet.insert_posts_one.args.object, code: constraint-violation}, message: Not-NULL violation. null value in column "created_by" violates not-null constraint}]
+  //        }
+  //       )
+  bool _doesPayloadHaveErros() {
+    if (payload is Map<String, dynamic>) {
+      if ((payload as Map<String, dynamic>)['errors'] != null) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   factory Message.fromJson(String source) => Message.fromMap(json.decode(source));
 
