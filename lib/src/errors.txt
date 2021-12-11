@@ -1,0 +1,21 @@
+This is a temporary file holding the possible errro messages so the package can handle them properly in the future:
+
+
+Message( id: 8ccf0ad5e9cb2327fe32c79ce5dfa61d, 
+         type: error, 
+        payload: {
+        extensions: {path: $, code: start-failed}, 
+        message: cannot start as connection_init failed with : Could not verify JWT: JWTIssuedAtFuture
+         }
+)
+
+
+Message(
+id: eac474f25c1a29861995906bf2b5dd6b,
+type: data, 
+payload: {
+    data: null, 
+    errors: [{extensions: {path: $.selectionSet.insert_posts_one.args.object, code: constraint-violation}, 
+    message: Not-NULL violation. null value in column "created_by" violates not-null constraint}]
+    }
+)

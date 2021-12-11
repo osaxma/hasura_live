@@ -1,10 +1,12 @@
 # Hasura Live Package
 A library for connecting to Hasura through websocket only.
 
-Note: In addition to subscriptions (aka live queries), mutations and queries can also be performed through the websocket connection. 
+In addition to subscriptions (aka live queries), mutations and queries can also be performed through the websocket connection. 
+
+**Important note: the package is still in early development so use it with caution.**
 
 # Motivation
-This package is meant to solve the problem of replacing an expired JWT (Json Web Token) with a new one without closing any live subscriptions. Firebase Authentication service is the main use case for creating this package but the concept should work with other other services as long as a stream of JWT can be provided. 
+This package is meant to solve the problem of replacing an expired JWT (JSON Web Token) with a new one without closing any live subscriptions. Firebase Authentication service is the main use case for creating this package but the concept should work with other services as long as a stream of JWT can be provided. 
 
 ## Issue: 
 Using Firebase Authenticationas as an example of a JWT provider, the issue can be summarized as follow:
@@ -120,7 +122,7 @@ FirebaseAuth.instance.userChanges().listen((event) {
 ```
 Unless another Firebase package (e.g. firestore) is refreshing the token or if the token is being refreshed manually, both streams above will **not** fire events after the JWT expires . 
 
-To work around this issue, the application has to manually refresh the JWT before it expires manually. The following is a simplified example code for an Authentication class that provides a stream of JWT where the JWT is refreshed before it expires:
+To work around this issue, the application has to manually refresh the JWT before it expires. The following is a simplified example code for an Authentication class that provides a stream of JWT where the JWT is refreshed before it expires:
 
 ```dart
 class Authentication {
